@@ -2,8 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 class Term {
-
-    //{c: f, args: {c: g, args: x}} = {c:g, args: {c:h, args: x,x}}
+    
     constructor(term) {
         let [leftSide, rightSide] = term.split('=')
         this.full = term
@@ -11,6 +10,14 @@ class Term {
         this.rightSide = rightSide
         this.leftSideStructure = {}
         this.rightSideStructure = {}
+        this.parse(this.leftSide, 0, this.leftSideStructure)
+        this.parse(this.rightSide, 0, this.rightSideStructure)
+        this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
+        this.buildedRightSideStructre = this.buildStructure(this.rightSide, this.rightSideStructure)
+        this.LeftSideArity = this.buildStructureArity(this.leftSide, this.leftSideStructure)
+        this.RightSideArity = this.buildStructureArity(this.rightSide, this.rightSideStructure)
+        this.leftSideDepth = this.calculateDepth(this.leftSide, this.leftSideStructure)
+        this.rightSideDepth = this.calculateDepth(this.rightSide, this.rightSideStructure)
     }
 
     parse(term, key, structure) {
@@ -32,6 +39,60 @@ class Term {
             structure.name = term[key]
             this.parse(term, key + 1, structure)
         }
+    }
+
+    buildStructure(term, structure) {
+        let result = `Структура терма ${term}: `
+        build(structure)
+        function build(structure) {
+            if (structure.name) {
+                result += structure.name
+                if (structure.args) {
+                    result += ' -> '
+                    if (structure.args.length > 0) {
+                        result += `${structure.args[0]},`
+                    }
+                    build(structure.args)
+                } else return result
+            }
+        }
+        return result
+    }
+
+    buildStructureArity(term, structure) {
+        let result = []
+        build(structure)
+        function build(structure) {
+            if (structure.name) {
+                result.push({name: structure.name, args: 0})
+                if (structure.args) {
+                    for (let key in result) {
+                        if (result[key].name === structure.name) result[key].args = 1
+                    }
+                    if (structure.args.length > 0) {
+                        for (let key in result) {
+                            if (result[key].name === structure.name) result[key].args += 1
+                        }
+                    }
+                    build(structure.args)
+                } else return result
+            }
+        }
+        return result
+    }
+
+    calculateDepth(term, structure) {
+        let result = 0
+        build(structure)
+        function build(structure) {
+            if (structure.name) {
+                if (structure.args) {
+                    result++
+                    build(structure.args)
+                } else return result
+            }
+        }
+        return result
     }
 
 }
@@ -105,32 +166,24 @@ class TRS {
 
     checkTRS() {
         for (let constructorKey in this.constructors) {
-            if ((this.constructors[constructorKey].n !== 1) && (this.constructors[constructorKey].n !== 2)) throw Error(`Арность конструктора может быть 1 или 2 ( Арность конструктора ${this.constructors[constructorKey].constructor}(${this.constructors[constructorKey].n}) равна ${this.constructors[constructorKey].n} )`)
+            let arity = this.constructors[constructorKey].n;
+            if ((arity !== 1) && (arity !== 2)) throw Error(`Арность конструктора может быть 1 или 2 ( Арность конструктора ${this.constructors[constructorKey].constructor}(${arity}) равна ${arity} )`)
+            for (let termKey in this.terms) {
+                if (this.constructors[constructorKey].name === this.)
+            }
         }
         for (let variableKey in this.variables) {
             for (let constructorKey in this.constructors) {
-                if (this.variables[variableKey] === this.constructors[constructorKey].constructor) throw Error(`Множество переменных и конструкторов не могут пересекаться ( Совпадают: ${this.variables[variableKey]} и ${this.constructors[constructorKey].constructor}(${this.constructors[constructorKey].n}) )`)
+                if (this.variables[variableKey] === this.constructors[constructorKey].constructor) throw Error(`Множества переменных и конструкторов не могут пересекаться ( Совпадают: ${this.variables[variableKey]} и ${this.constructors[constructorKey].constructor}(${this.constructors[constructorKey].n}) )`)
             }
         }
-        for (let termKey in this.terms) {
-            this.terms[termKey].parse(this.terms[termKey].leftSide, 0, this.terms[termKey].leftSideStructure)
-            this.terms[termKey].parse(this.terms[termKey].rightSide, 0, this.terms[termKey].rightSideStructure)
-        }
-    }
-
-    printParsingTree() {
-
     }
 
     print() {
-        console.log(`Имя: ${this.name}\nКонструкторы: ${this.constructors.map((constructor) => {return constructor.constructor + '(' + constructor.n + ')'}).join(', ')}\nПеременные: ${this.variables.join(', ')}\nТермы:\n${this.terms.map((term) => {return term.term}).join('\n')}`)
+        console.log(`Имя: ${this.name}\nКонструкторы: ${this.constructors.map((constructor) => {return constructor.constructor + '(' + constructor.n + ')'}).join(', ')}\nПеременные: ${this.variables.join(', ')}\nТермы:\n${this.terms.map((term) => {return term.full}).join('\n')}`)
     }
 }
 
 let TRS1 = new TRS('TRS1', 'input.txt')
 TRS1.print()
 console.log(TRS1.isCorrectSyntax)
-
-console.log(TRS1.terms)
-
-
