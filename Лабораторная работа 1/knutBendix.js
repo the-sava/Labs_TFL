@@ -14,10 +14,11 @@ class Term {
         this.parse(this.rightSide, 0, this.rightSideStructure)
         this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
         this.buildedRightSideStructre = this.buildStructure(this.rightSide, this.rightSideStructure)
-        this.LeftSideArity = this.buildStructureArity(this.leftSide, this.leftSideStructure)
-        this.RightSideArity = this.buildStructureArity(this.rightSide, this.rightSideStructure)
+        this.leftSideArity = this.buildStructureArity(this.leftSide, this.leftSideStructure)
+        this.rightSideArity = this.buildStructureArity(this.rightSide, this.rightSideStructure)
         this.leftSideDepth = this.calculateDepth(this.leftSide, this.leftSideStructure)
         this.rightSideDepth = this.calculateDepth(this.rightSide, this.rightSideStructure)
+        this.maxDepth = Math.max(this.leftSideDepth, this.rightSideDepth)
     }
 
     parse(term, key, structure) {
@@ -169,12 +170,34 @@ class TRS {
             let arity = this.constructors[constructorKey].n;
             if ((arity !== 1) && (arity !== 2)) throw Error(`Арность конструктора может быть 1 или 2 ( Арность конструктора ${this.constructors[constructorKey].constructor}(${arity}) равна ${arity} )`)
             for (let termKey in this.terms) {
-                if (this.constructors[constructorKey].name === this.)
+                
             }
         }
         for (let variableKey in this.variables) {
             for (let constructorKey in this.constructors) {
                 if (this.variables[variableKey] === this.constructors[constructorKey].constructor) throw Error(`Множества переменных и конструкторов не могут пересекаться ( Совпадают: ${this.variables[variableKey]} и ${this.constructors[constructorKey].constructor}(${this.constructors[constructorKey].n}) )`)
+            }
+        }
+        let depthTerm = this.terms.filter((term) => term.maxDepth > 3)
+        if (depthTerm.length > 0) {
+            console.log(depthTerm)
+            throw Error(`Максимальная вложенность термов не может превышать 3 (Маскимальная вложенность термов в терме ${depthTerm.full}: ${depthTerm.maxDepth})`)
+        }
+        for (let constructorKey in this.constructors) {
+            for (let termKey in this.terms) {
+                for (let lKey in this.terms[termKey].leftSideArity) {
+                    let termConstructor = this.terms[termKey].leftSideArity[lKey], constructor = this.constructors[constructorKey]
+                    if (constructor.constructor === termConstructor.name) {
+                        if (constructor.n !== termConstructor.args) throw Error(`Арность конструкторов должна совадать (Несовпадение: ${constructor.constructor}(${constructor.n}) и ${termConstructor.name}(${termConstructor.args}))`)
+                    }
+                }
+                for (let rKey in this.terms[termKey].rightSideArity) {
+                    let termConstructor = this.terms[termKey].rightSideArity[rKey], constructor = this.constructors[constructorKey]
+                    if (constructor.name === termConstructor.name) {
+                        console.log(constructor.name + " " + termConstructor.name)
+                        if (constructor.n !== termConstructor.args) throw Error(`Арность конструкторов должна совпадать (Несовпадение: ${constructor.constructor}(${constructor.n}) и ${termConstructor.name}(${termConstructor.args}))`)
+                    }
+                }
             }
         }
     }
