@@ -4,46 +4,84 @@ const path = require('path')
 class Term {
     
     constructor(term) {
+        // [f,[g[h[x,x]],y],x]
         let [leftSide, rightSide] = term.split('=')
         this.full = term
         this.leftSide = leftSide
         this.rightSide = rightSide
-        this.leftSideStructure = {}
-        this.rightSideStructure = {}
-        this.parse(this.leftSide, 0, this.leftSideStructure)
-        this.parse(this.rightSide, 0, this.rightSideStructure)
-        this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
-        this.buildedRightSideStructre = this.buildStructure(this.rightSide, this.rightSideStructure)
-        this.leftSideArity = this.buildStructureArity(this.leftSide, this.leftSideStructure)
-        this.rightSideArity = this.buildStructureArity(this.rightSide, this.rightSideStructure)
-        this.leftSideDepth = this.calculateDepth(this.leftSide, this.leftSideStructure)
-        this.rightSideDepth = this.calculateDepth(this.rightSide, this.rightSideStructure)
-        this.maxDepth = Math.max(this.leftSideDepth, this.rightSideDepth)
+        this.leftSideParsed = []
+        this.rightSideParsed = []
+        this.parseTerm(this.leftSide, 0, this.leftSideParsed, 0)
+        this.parseTerm(this.rightSide, 0, this.rightSideParsed, 0)
+        // this.parse(this.leftSide, 0, this.leftSideStructure, this.leftSideStructure)
+        // this.parse(this.rightSide, 0, this.rightSideStructure, this.rightSideStructure)
+        // this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
+        // this.buildedRightSideStructre = this.buildStructure(this.rightSide, this.rightSideStructure)
+        // this.leftSideArity = this.buildStructureArity(this.leftSide, this.leftSideStructure)
+        // this.rightSideArity = this.buildStructureArity(this.rightSide, this.rightSideStructure)
+        // this.leftSideDepth = this.calculateDepth(this.leftSide, this.leftSideStructure)
+        // this.rightSideDepth = this.calculateDepth(this.rightSide, this.rightSideStructure)
+        // this.maxDepth = Math.max(this.leftSideDepth, this.rightSideDepth)
     }
 
-    parse(term, key, structure) {
+    parseTerm(term, key, s1, depth) {
+        if (key === term.length - 1) {
+            return
+        } else if (term[key] === '(') {
+            s1[depth] = []
+            this.parseTerm(term, key + 1, s1, depth + 1)
+        } else if (term[key] === ',') {
+            s1[depth].push(term[key + 1])
+            this.parseTerm(term, key + 2, depth)
+        } else if (term[key] === ')') {
+            this.parseTerm(term, key + 1, s1, depth - 1)
+        } else {
+            s1[depth] = term[key]
+            this.parseTerm(term, key + 1, s1, depth + 1)
+        }
+    }
+
+    parse(term, key, prevStructure, currentStructure) {
         if (key === term.length - 1) {
             return 0
         }
         else if (term[key] === '(') {
-            structure.args = []
-            this.parse(term, key + 1, structure.args)
+            currentStructure.args = []
+            this.parse(term, key + 1, prevStructure, currentStructure.args)
         }
         else if (term[key] === ')') {
-            this.parse(term, key + 1, structure)
+            this.parse(term, key + 1, currentStructure, prevStructure)
         }
         else if (term[key] === ',') {
-            structure.push(term[key + 1])
-            this.parse(term, key + 2, structure)
+            prevStructure.args.push(term[key + 1])
+            this.parse(term, key + 2, prevStructure, currentStructure)
         }
         else {
-            structure.name = term[key]
-            this.parse(term, key + 1, structure)
+            currentStructure.name = term[key]
+            this.parse(term, key + 1, prevStructure, currentStructure)
         }
     }
 
     buildStructure(term, structure) {
         let result = `Структура терма ${term}: `
+        build(structure)
+        function build(structure) {
+            if (structure.name) {
+                result += structure.name
+                if (structure.args) {
+                    result += ' -> '
+                    if (structure.args.length > 0) {
+                        result += `${structure.args[0]},`
+                    }
+                    build(structure.args)
+                } else return result
+            }
+        }
+        return result
+    }
+
+    stringStructure(structure) {
+        let result = ``
         build(structure)
         function build(structure) {
             if (structure.name) {
@@ -180,33 +218,55 @@ class TRS {
         }
         let depthTerm = this.terms.filter((term) => term.maxDepth > 3)
         if (depthTerm.length > 0) {
-            console.log(depthTerm)
-            throw Error(`Максимальная вложенность термов не может превышать 3 (Маскимальная вложенность термов в терме ${depthTerm.full}: ${depthTerm.maxDepth})`)
+            throw Error(`Максимальная вложенность конструкторов в терме не может превышать 3 (Маскимальная вложенность конструкторов в терме ${depthTerm[0].full}: ${depthTerm[0].maxDepth})`)
         }
         for (let constructorKey in this.constructors) {
             for (let termKey in this.terms) {
                 for (let lKey in this.terms[termKey].leftSideArity) {
                     let termConstructor = this.terms[termKey].leftSideArity[lKey], constructor = this.constructors[constructorKey]
                     if (constructor.constructor === termConstructor.name) {
-                        if (constructor.n !== termConstructor.args) throw Error(`Арность конструкторов должна совадать (Несовпадение: ${constructor.constructor}(${constructor.n}) и ${termConstructor.name}(${termConstructor.args}))`)
+                        if (constructor.n !== termConstructor.args) {
+                            console.log(constructor.n + ' ' + termConstructor.args)
+                            throw Error(`Арность конструкторов должна совпадать (Несовпадение: ${constructor.constructor}(${constructor.n}) в терме ${this.terms[termKey].full})`)
+                        }
                     }
                 }
                 for (let rKey in this.terms[termKey].rightSideArity) {
                     let termConstructor = this.terms[termKey].rightSideArity[rKey], constructor = this.constructors[constructorKey]
                     if (constructor.name === termConstructor.name) {
                         console.log(constructor.name + " " + termConstructor.name)
-                        if (constructor.n !== termConstructor.args) throw Error(`Арность конструкторов должна совпадать (Несовпадение: ${constructor.constructor}(${constructor.n}) и ${termConstructor.name}(${termConstructor.args}))`)
+                        if (constructor.n !== termConstructor.args) throw Error(`Арность конструкторов должна совпадать (Несовпадение: ${constructor.constructor}(${constructor.n}) в терме ${this.terms[termKey].full})`)
                     }
                 }
             }
         }
     }
 
+    // knutBendix() {
+    //     for (let term of this.terms) {
+    //         firstStage(term, term.leftSideStructure, term.rightSideStructure)
+    //     }
+    //     function firstStage(term, structure, otherStructure) {
+    //         if (structure.name) {
+    //             if (structure.args.stringStructure(structure.args) === otherStructure.stringStructure(otherStructure)) {
+    //                 return 'Завершается по первому правилу по первому аргументу'
+    //             }
+    //             if (structure.args.length > 0) {
+    //                 if (structure.args.stringStructure(structure.args[0]) === otherStructure.stringStructure(otherStructure)) {
+    //                     return 'Завершается по первому правилу по второму аргументу'
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
     print() {
         console.log(`Имя: ${this.name}\nКонструкторы: ${this.constructors.map((constructor) => {return constructor.constructor + '(' + constructor.n + ')'}).join(', ')}\nПеременные: ${this.variables.join(', ')}\nТермы:\n${this.terms.map((term) => {return term.full}).join('\n')}`)
     }
 }
 
-let TRS1 = new TRS('TRS1', 'input.txt')
+let TRS1 = new TRS('TRS1', 'input1.txt')
+let TRS2 = new TRS('TRS2', 'input2.txt')
 TRS1.print()
 console.log(TRS1.isCorrectSyntax)
+
