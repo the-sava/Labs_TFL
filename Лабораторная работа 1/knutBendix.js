@@ -1,18 +1,40 @@
 const fs = require('fs')
 const path = require('path')
+function setCharAt(str,index,chr) {
+    if(index > str.length-1) return str;
+    return str.substring(0,index) + chr + str.substring(index+1);
+}
+class Tree {
+
+}
+
+class Node {
+
+    constructor(name, parent) {
+        this.name = name
+        this.args = []
+        this.parent = parent
+    }
+
+    getParent() {
+        return this.parent
+    }
+
+}
 
 class Term {
     
-    constructor(term) {
+    constructor(term, TRS) {
         // [f,[g[h[x,x]],y],x]
         let [leftSide, rightSide] = term.split('=')
         this.full = term
+        this.TRS = TRS
         this.leftSide = leftSide
         this.rightSide = rightSide
         this.leftSideParsed = []
         this.rightSideParsed = []
-        this.parseTerm(this.leftSide, 0, this.leftSideParsed, 0)
-        this.parseTerm(this.rightSide, 0, this.rightSideParsed, 0)
+        this.parseTerm(this.leftSide)
+        this.parseTerm(this.rightSide)
         // this.parse(this.leftSide, 0, this.leftSideStructure, this.leftSideStructure)
         // this.parse(this.rightSide, 0, this.rightSideStructure, this.rightSideStructure)
         // this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
@@ -24,22 +46,42 @@ class Term {
         // this.maxDepth = Math.max(this.leftSideDepth, this.rightSideDepth)
     }
 
-    parseTerm(term, key, s1, depth) {
-        if (key === term.length - 1) {
+    parseTerm(term) {
+        let result =
+            {}
+        if (term === '') {
             return
-        } else if (term[key] === '(') {
-            s1[depth] = []
-            this.parseTerm(term, key + 1, s1, depth + 1)
-        } else if (term[key] === ',') {
-            s1[depth].push(term[key + 1])
-            this.parseTerm(term, key + 2, depth)
-        } else if (term[key] === ')') {
-            this.parseTerm(term, key + 1, s1, depth - 1)
-        } else {
-            s1[depth] = term[key]
-            this.parseTerm(term, key + 1, s1, depth + 1)
         }
+        if (this.TRS.constructors.find((constructor) => {return constructor.constructor === term[0]})) {
+            result.name = term[0]
+            let indexBracketLeft = term.indexOf('(')
+            let indexBracketRight = term.lastIndexOf(')')
+            let indexComma = indexBracketLeft
+            let c = 0
+            result.args = []
+            term = setCharAt(term, indexBracketLeft, '*')
+            term = setCharAt(term, indexBracketRight, '*')
+            for (let i = indexBracketLeft + 1; i < indexBracketRight; i++) {
+                if (term[i] === '(') c++
+                else if (term[i] === ')') c--
+                if ( (term[i] === ',') && (c === 0) ) indexComma = i
+            }
+            if (indexComma === indexBracketLeft) result.args.push(term.slice(indexBracketLeft + 1, indexBracketRight))
+            else {
+                result.args.push(term.slice(indexBracketLeft + 1, indexComma))
+                result.args.push(term.slice(indexComma + 1, indexBracketRight))
+            }
+            this.leftSideParsed.push(result)
+            if (indexComma !== indexBracketLeft) term = setCharAt(term, indexComma, '')
+            this.parseTerm(term.slice(term.indexOf('*') + 1, term.lastIndexOf('*')))
+        } else if (this.TRS.variables.indexOf(term[0]) !== -1) {
+            result.name = term[0]
+            this.leftSideParsed.push(result)
+            this.parseTerm(term.replace(result.name, ''))
+        }
+
     }
+
 
     parse(term, key, prevStructure, currentStructure) {
         if (key === term.length - 1) {
@@ -195,7 +237,7 @@ class TRS {
                     break
                 }
                 default: {
-                    this.terms.push(new Term(line))
+                    this.terms.push(new Term(line, this))
                     break
                 }
             }
