@@ -33,8 +33,8 @@ class Term {
         this.rightSide = rightSide
         this.leftSideParsed = []
         this.rightSideParsed = []
-        this.parseTerm(this.leftSide)
-        this.parseTerm(this.rightSide)
+        this.parseTerm(this.leftSide, this.leftSideParsed)
+        this.parseTerm(this.rightSide, this.rightSideParsed)
         // this.parse(this.leftSide, 0, this.leftSideStructure, this.leftSideStructure)
         // this.parse(this.rightSide, 0, this.rightSideStructure, this.rightSideStructure)
         // this.buildedLeftSideStructre = this.buildStructure(this.leftSide, this.leftSideStructure)
@@ -46,13 +46,42 @@ class Term {
         // this.maxDepth = Math.max(this.leftSideDepth, this.rightSideDepth)
     }
 
-    parseTerm(term) {
-        let result =
-            {}
+    parseTerm(term, parsed) {
+        let result = {}
         if (term === '') {
             return
         }
-        if (this.TRS.constructors.find((constructor) => {return constructor.constructor === term[0]})) {
+        if (term.indexOf(' ') !== -1) {
+            let subTerm = term.slice(0, term.indexOf(' '))
+            if (this.TRS.constructors.find((constructor) => {return constructor.constructor === subTerm[0]})) {
+                result.name = subTerm[0]
+                let indexBracketLeft = subTerm.indexOf('(')
+                let indexBracketRight = subTerm.lastIndexOf(')')
+                let indexComma = indexBracketLeft
+                let c = 0
+                result.args = []
+                subTerm = setCharAt(subTerm, indexBracketLeft, '*')
+                subTerm = setCharAt(subTerm, indexBracketRight, '*')
+                for (let i = indexBracketLeft + 1; i < indexBracketRight; i++) {
+                    if (subTerm[i] === '(') c++
+                    else if (subTerm[i] === ')') c--
+                    if ( (subTerm[i] === ',') && (c === 0) ) indexComma = i
+                }
+                if (indexComma === indexBracketLeft) result.args.push(subTerm.slice(indexBracketLeft + 1, indexBracketRight))
+                else {
+                    result.args.push(subTerm.slice(indexBracketLeft + 1, indexComma))
+                    result.args.push(subTerm.slice(indexComma + 1, indexBracketRight))
+                }
+                parsed.push(result)
+                if (indexComma !== indexBracketLeft) subTerm = setCharAt(term, indexComma, '')
+                this.parseTerm(term.slice(term.indexOf(' ') + 1), parsed)
+            } else if (this.TRS.variables.indexOf(term[0]) !== -1) {
+                result.name = subTerm[0]
+                parsed.push(result)
+                this.parseTerm(term.slice(term.indexOf(' ') + 1), parsed)
+            }
+        }
+        else if (this.TRS.constructors.find((constructor) => {return constructor.constructor === term[0]})) {
             result.name = term[0]
             let indexBracketLeft = term.indexOf('(')
             let indexBracketRight = term.lastIndexOf(')')
@@ -71,37 +100,15 @@ class Term {
                 result.args.push(term.slice(indexBracketLeft + 1, indexComma))
                 result.args.push(term.slice(indexComma + 1, indexBracketRight))
             }
-            this.leftSideParsed.push(result)
-            if (indexComma !== indexBracketLeft) term = setCharAt(term, indexComma, '')
-            this.parseTerm(term.slice(term.indexOf('*') + 1, term.lastIndexOf('*')))
+            parsed.push(result)
+            if (indexComma !== indexBracketLeft) term = setCharAt(term, indexComma, ' ')
+            this.parseTerm(term.slice(term.indexOf('*') + 1, term.lastIndexOf('*')), parsed)
         } else if (this.TRS.variables.indexOf(term[0]) !== -1) {
             result.name = term[0]
-            this.leftSideParsed.push(result)
-            this.parseTerm(term.replace(result.name, ''))
+            parsed.push(result)
+            this.parseTerm(term.replace(result.name, ''), parsed)
         }
 
-    }
-
-
-    parse(term, key, prevStructure, currentStructure) {
-        if (key === term.length - 1) {
-            return 0
-        }
-        else if (term[key] === '(') {
-            currentStructure.args = []
-            this.parse(term, key + 1, prevStructure, currentStructure.args)
-        }
-        else if (term[key] === ')') {
-            this.parse(term, key + 1, currentStructure, prevStructure)
-        }
-        else if (term[key] === ',') {
-            prevStructure.args.push(term[key + 1])
-            this.parse(term, key + 2, prevStructure, currentStructure)
-        }
-        else {
-            currentStructure.name = term[key]
-            this.parse(term, key + 1, prevStructure, currentStructure)
-        }
     }
 
     buildStructure(term, structure) {
