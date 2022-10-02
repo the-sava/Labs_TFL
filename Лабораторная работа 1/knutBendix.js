@@ -74,7 +74,7 @@ class Term {
                 }
                 parsed.push(result)
                 if (indexComma !== indexBracketLeft) subTerm = setCharAt(term, indexComma, '')
-                this.parseTerm(term.slice(term.indexOf(' ') + 1), parsed)
+                this.parseTerm(term.slice(subTerm.indexOf('*') + 1, term.lastIndexOf('*')), parsed)
             } else if (this.TRS.variables.indexOf(term[0]) !== -1) {
                 result.name = subTerm[0]
                 parsed.push(result)
@@ -314,8 +314,14 @@ class TRS {
     }
 }
 
-let TRS1 = new TRS('TRS1', 'input1.txt')
-let TRS2 = new TRS('TRS2', 'input2.txt')
-TRS1.print()
-console.log(TRS1.isCorrectSyntax)
+// let TRS1 = new TRS('TRS1', 'input1.txt')
+// let TRS2 = new TRS('TRS2', 'input2.txt')
+let T1 = new TRS('T1', 't1.txt')
+// TRS1.print()
+// TRS2.print()
+T1.print()
+for (let term of T1.terms) {
+    console.log(term.leftSideParsed)
+    console.log(term.rightSideParsed)
+}
 
