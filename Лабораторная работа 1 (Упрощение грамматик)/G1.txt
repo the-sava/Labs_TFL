@@ -1,4 +1,4 @@
 nonterminals = S, T
-terminals = a,b
-S  -> aSa|b|aTa
+terminals = a, b
+S -> aSa|b|aTa
 T -> aTa|aSa|b
