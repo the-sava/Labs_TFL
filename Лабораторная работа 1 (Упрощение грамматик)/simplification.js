@@ -4,7 +4,6 @@ const fs = require('fs')
 class Grammar {
 
     constructor(name, fileName) {
-
         this.name = name
         this.fileName = fileName
         this.regexpForNonTerminals = /nonterminals=([A-z],)*[A-z]/g
@@ -12,9 +11,10 @@ class Grammar {
         this.nonTerminals = []
         this.terminals = []
         this.rules = []
-        this.structure = []
+        this.structure = new Map()
         this.parseFile()
         this.checkGrammar()
+        this.buildStructure()
     }
 
     parseFile() {
@@ -44,10 +44,14 @@ class Grammar {
                 default: {
                     let full = this.lines[lineIndex]
                     let [leftSide, rightSide] = this.lines[lineIndex].split('->')
-                    this.rules.push({leftSide, rightSide, full})
+                    if (rightSide.indexOf('|') !== -1) {
+                        let parts = rightSide.split('|')
+                        parts.map((part) => {
+                            this.rules.push({leftSide: leftSide, rightSide: part, full: leftSide + '->' + part})
+                        })
+                    } else this.rules.push({leftSide, rightSide, full})
                     break
                 }
-
             }
         }
     }
@@ -65,13 +69,13 @@ class Grammar {
 
     buildStructure() {
         this.rules.map((rule) => {
-            let result = this.structure.find((s) => s.nonTerminal === rule.leftSide)
-            if (result) this.structure.push({nonTerminal: rule.leftSide, rightSides:[rule.rightSide]})
-            else {
-                for (let structure )
+            if (this.structure.has(rule.leftSide)) {
+                this.structure.get(rule.leftSide).rules.push(rule.rightSide)
+                this.structure.get(rule.leftSide).terminalForms.push(rule.rightSide.split('').map( (char) => (this.nonTerminals.indexOf(char) !== -1)? '_' : char).join(''))
             }
-
+            else this.structure.set(rule.leftSide, {rules: [rule.rightSide], terminalForms: [rule.rightSide.split('').map( (char) => (this.nonTerminals.indexOf(char) !== -1)? '_' : char).join('')]})
         })
+        for (let structure of this.structure) structure[1].terminalForms.sort()
     }
 
     print() {
@@ -80,9 +84,24 @@ class Grammar {
         console.log(`Нетерминалы: ${this.nonTerminals.join(',')}`)
         console.log(`Терминалы: ${this.terminals.join(',')}`)
         console.log(`Правила: \n${this.rules.map((rule) => rule.full).join('\n')}`)
-        // console.log(`Структура:\n ${this.structure.map((s) => s.)}`)
+    }
+
+    printStructure() {
+        console.log('Терминальная форма:')
+        for (let structure of this.structure) {
+            let result = `${structure[0]}: `
+            for (let terminalForm of structure[1].terminalForms) {
+                result += `${terminalForm} `
+            }
+            console.log(result)
+        }
+    }
+
+    simplify() {
+        
     }
 }
 
 let G1 = new Grammar('G1', 'G1.txt')
-G1.print() 
+G1.print()
+G1.printStructure()
