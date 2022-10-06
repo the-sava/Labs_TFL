@@ -1,0 +1,6 @@
+nonterminals = S, T, Q, R
+terminals = a, b
+S->aSSb|a
+T->aTQb|a
+Q->aQRb|a
+R->b

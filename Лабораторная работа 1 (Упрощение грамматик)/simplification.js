@@ -12,6 +12,7 @@ class Grammar {
         this.terminals = []
         this.rules = []
         this.structure = new Map()
+        this.eqClasses = [new Set()]
         this.parseFile()
         this.checkGrammar()
         this.buildStructure()
@@ -64,6 +65,8 @@ class Grammar {
         })
         this.rules.map((rule) => {
             if (this.nonTerminals.indexOf(rule.leftSide) === -1) throw Error(`Некорректный формат ввода правила: ${rule.full} (В левой части правила может стоять только нетерминал)`)
+            for (let char of rule.full)
+                if ((this.nonTerminals.indexOf(char) === -1) && (this.terminals.indexOf(char) === -1) && (['-','>','|', ' '].indexOf(char) === -1)) throw Error(`В правилах могут использоваться только терминальные, нетерминальные или служебные символы (Символ ${char} не является терминалом, нетерминалом или служебным символомћ)`)
         })
     }
 
@@ -98,10 +101,30 @@ class Grammar {
     }
 
     simplify() {
-        
+        for (let structure of this.structure) {
+            if (this.eqClasses[0].size === 0) this.eqClasses[0].add({nonTerminal: structure[0], terminalForms: structure[1].terminalForms})
+            else {
+                let isPushing = false
+                for (let eqIndex in this.eqClasses) {
+                    for (let ent of this.eqClasses[eqIndex]) {
+                        if (structure[1].terminalForms.join(',') === ent.terminalForms.join(',')) {
+                            this.eqClasses[eqIndex].add({nonTerminal: structure[0], terminalForms: structure[1].terminalForms})
+                            isPushing = true
+                            break
+                        }
+                    }
+                }
+                if (!isPushing) this.eqClasses.push({nonTerminal: structure[0], terminalForms: structure[1].terminalForms})
+            }
+        }
+
     }
 }
 
 let G1 = new Grammar('G1', 'G1.txt')
-G1.print()
-G1.printStructure()
+G1.simplify()
+let G2 = new Grammar('G2', 'G2.txt')
+G2.simplify()
+let G3 = new Grammar('G3', 'G3.txt')
+G3.simplify()
+G3.print()
