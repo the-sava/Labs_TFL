@@ -117,7 +117,6 @@ class Grammar {
                 if (!isPushing) this.eqClasses.push({nonTerminal: structure[0], terminalForms: structure[1].terminalForms})
             }
         }
-
     }
 }
 
